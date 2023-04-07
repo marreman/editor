@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Edit test</title>
+    <style>
+      html {
+        font-family: system-ui, sans-serif;
+      }
+
+      body {
+        width: 700px;
+        margin: 30px auto;
+      }
+
+      .cursor {
+        position: absolute;
+        color: white;
+        background-color: #2c70de;
+        padding: 0 3px;
+        border-radius: 3px;
+
+        /* border: 1px solid #2c70de; */
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      Pathos är ett centralt begrepp inom retoriken som där handlar om de starka
+      känslor som en talare söker väcka hos sina åhörare, samt de känslor som
+      faktiskt väcks hos publiken. Denna sinnesrörelse står oftast i samklang
+      med de känslor som talaren själv visar. Tillsammans med ethos och logos
+      utgör pathos en del av de grundläggande medlen för att övertyga. Den
+      språkhandling som är knuten till pathos kallas movere och betyder just att
+      röra eller påverka publikens känslor. Beroende på talets syfte kan talaren
+      vilja väcka glädje, ilska, engagemang, medlidande, hopp, förtvivlan,
+      längtan och så vidare. Även frånvaro av känslor hos talaren kan väcka
+      känslor hos publiken.
+    </main>
+
+    <script>
+      const px = (n) => `${n}px`
+
+      const tap = (x, f) => {
+        if (x instanceof Array) {
+          f(...x)
+          return x[x.length - 1]
+        } else {
+          f(x)
+          return x
+        }
+      }
+
+      const span = (content) => `<span>${content}</span>`
+
+      const container = document.querySelector("main")
+      const words = container.textContent
+        .split(/\s/g)
+        .filter(Boolean)
+        .map(span)
+        .join(" ")
+      container.innerHTML = words
+
+      window.cursor = {
+        targets: [],
+        el: tap(document.createElement("div"), (div) =>
+          div.classList.add("cursor")
+        ),
+        moveLeft() {
+          this.expandLeft()
+          this.contractRight()
+        },
+        moveRight() {
+          this.expandRight()
+          this.contractLeft()
+        },
+        contractLeft() {
+          const [, ...targets] = this.targets
+          this.targets = targets
+          this.render()
+        },
+        contractRight() {
+          this.targets.pop()
+          this.render()
+        },
+        expandLeft() {
+          const expandTo = this.targets[0].previousElementSibling
+          if (!expandTo) return
+          this.targets.unshift(expandTo)
+          this.render()
+        },
+        expandRight() {
+          const expandTo =
+            this.targets[this.targets.length - 1].nextElementSibling
+          if (!expandTo) return
+          this.targets.push(expandTo)
+          this.render()
+        },
+        moveTo(targets) {
+          if (!targets[0]) return
+          this.targets = targets
+          this.render()
+        },
+        render() {
+          this.el.textContent = this.targets.map((t) => t.textContent).join(" ")
+          const style = this.targets.reduce(
+            (style, t) => {
+              const rect = t.getBoundingClientRect()
+              if (!style.top) style.top = rect.top
+              if (!style.left) style.left = rect.left
+              return style
+            },
+            {
+              top: 0,
+              left: 0,
+            }
+          )
+
+          this.el.style.top = px(style.top)
+          this.el.style.left = px(style.left - this.style("paddingLeft"))
+        },
+        style(prop) {
+          return parseInt(window.getComputedStyle(this.el)[prop], 10)
+        },
+      }
+
+      document.body.appendChild(cursor.el)
+      cursor.moveTo([document.querySelector("main > span")])
+
+      const keyToAction = {
+        ArrowLeft: () => cursor.moveLeft(),
+        ArrowRight: () => cursor.moveRight(),
+        "Shift+ArrowLeft": () => cursor.expandLeft(),
+        "Shift+ArrowRight": () => cursor.expandRight(),
+      }
+
+      document.addEventListener("keydown", (event) => {
+        const chord = [
+          event.shiftKey && "Shift",
+          event.altKey && "Alt",
+          event.key,
+        ]
+          .filter(Boolean)
+          .join("+")
+
+        const action = keyToAction[chord]
+
+        console.log(chord, action)
+        // console.log(event)
+        if (!action) return
+        action(event)
+      })
+    </script>
+  </body>
+</html>
