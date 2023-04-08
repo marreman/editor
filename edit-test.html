@@ -8,21 +8,18 @@
     <style>
       html {
         font-family: system-ui, sans-serif;
+        caret-color: #2c70de;
       }
 
       body {
-        width: 700px;
+        max-width: 700px;
+        padding: 30px;
         margin: 30px auto;
       }
 
-      .cursor {
-        position: absolute;
+      *::selection {
         color: white;
         background-color: #2c70de;
-        padding: 0 3px;
-        border-radius: 3px;
-
-        /* border: 1px solid #2c70de; */
       }
     </style>
   </head>
@@ -41,117 +38,111 @@
     </main>
 
     <script>
-      const px = (n) => `${n}px`
+      const keyboard = (() => {
+        const listeners = {}
 
-      const tap = (x, f) => {
-        if (x instanceof Array) {
-          f(...x)
-          return x[x.length - 1]
-        } else {
-          f(x)
-          return x
+        document.addEventListener("keydown", (event) => {
+          const chord = [
+            event.shiftKey && "Shift",
+            event.altKey && "Alt",
+            event.ctrlKey && "Control",
+            event.key,
+          ]
+            .filter(Boolean)
+            .join("+")
+
+          // console.log(chord)
+
+          const fn = listeners[chord]
+
+          if (!fn) return
+
+          fn(event)
+        })
+
+        return {
+          on(chord, f) {
+            listeners[chord] = f
+          },
         }
+      })()
+
+      const split = (s, at) => [s.slice(0, at), s.slice(at)]
+      const trimStart = (s) => s.trimStart()
+      const trimEnd = (s) => s.trimEnd()
+      const juxt = (xs, fs) =>
+        xs.map((x, i) => (fs[i] instanceof Function ? fs[i](x) : x))
+
+      const addPeriod = (string, index) => {
+        const [beginning, end] = juxt(split(string, index), [
+          trimEnd,
+          trimStart,
+        ])
+        const [firstLetter, restOfEnd] = split(end, 1)
+        return beginning + ". " + firstLetter.toUpperCase() + restOfEnd
       }
 
-      const span = (content) => `<span>${content}</span>`
-
-      const container = document.querySelector("main")
-      const words = container.textContent
-        .split(/\s/g)
-        .filter(Boolean)
-        .map(span)
-        .join(" ")
-      container.innerHTML = words
-
-      window.cursor = {
-        targets: [],
-        el: tap(document.createElement("div"), (div) =>
-          div.classList.add("cursor")
-        ),
-        moveLeft() {
-          this.expandLeft()
-          this.contractRight()
-        },
-        moveRight() {
-          this.expandRight()
-          this.contractLeft()
-        },
-        contractLeft() {
-          const [, ...targets] = this.targets
-          this.targets = targets
-          this.render()
-        },
-        contractRight() {
-          this.targets.pop()
-          this.render()
-        },
-        expandLeft() {
-          const expandTo = this.targets[0].previousElementSibling
-          if (!expandTo) return
-          this.targets.unshift(expandTo)
-          this.render()
-        },
-        expandRight() {
-          const expandTo =
-            this.targets[this.targets.length - 1].nextElementSibling
-          if (!expandTo) return
-          this.targets.push(expandTo)
-          this.render()
-        },
-        moveTo(targets) {
-          if (!targets[0]) return
-          this.targets = targets
-          this.render()
-        },
-        render() {
-          this.el.textContent = this.targets.map((t) => t.textContent).join(" ")
-          const style = this.targets.reduce(
-            (style, t) => {
-              const rect = t.getBoundingClientRect()
-              if (!style.top) style.top = rect.top
-              if (!style.left) style.left = rect.left
-              return style
-            },
-            {
-              top: 0,
-              left: 0,
-            }
-          )
-
-          this.el.style.top = px(style.top)
-          this.el.style.left = px(style.left - this.style("paddingLeft"))
-        },
-        style(prop) {
-          return parseInt(window.getComputedStyle(this.el)[prop], 10)
-        },
+      const addComma = (string, index) => {
+        const [beginning, end] = juxt(split(string, index), [
+          trimEnd,
+          trimStart,
+        ])
+        return beginning + ", " + end
       }
 
-      document.body.appendChild(cursor.el)
-      cursor.moveTo([document.querySelector("main > span")])
-
-      const keyToAction = {
-        ArrowLeft: () => cursor.moveLeft(),
-        ArrowRight: () => cursor.moveRight(),
-        "Shift+ArrowLeft": () => cursor.expandLeft(),
-        "Shift+ArrowRight": () => cursor.expandRight(),
+      const addSpace = (string, index) => {
+        const [beginning, end] = juxt(split(string, index), [
+          trimEnd,
+          trimStart,
+        ])
+        return beginning + " " + end
       }
 
-      document.addEventListener("keydown", (event) => {
-        const chord = [
-          event.shiftKey && "Shift",
-          event.altKey && "Alt",
-          event.key,
-        ]
-          .filter(Boolean)
-          .join("+")
+      const selection = (() => {
+        document.addEventListener("selectionchange", () => {
+          console.log("selection change", window.getSelection().toString())
+        })
+        return {
+          period() {
+            const sel = window.getSelection()
+            sel.focusNode.textContent = addPeriod(
+              sel.focusNode.textContent,
+              sel.focusOffset
+            )
+          },
+          comma() {
+            const sel = window.getSelection()
+            sel.focusNode.textContent = addComma(
+              sel.focusNode.textContent,
+              sel.focusOffset
+            )
+          },
+          space() {
+            const sel = window.getSelection()
+            sel.focusNode.textContent = addSpace(
+              sel.focusNode.textContent,
+              sel.focusOffset
+            )
+          },
+          moveLeft() {
+            const sel = window.getSelection()
+            sel.collapseToStart()
+            sel.modify("extend", "left", "word")
+          },
+          moveRight() {
+            const sel = window.getSelection()
+            sel.collapseToEnd()
+            sel.modify("extend", "right", "word")
+          },
+        }
+      })()
 
-        const action = keyToAction[chord]
-
-        console.log(chord, action)
-        // console.log(event)
-        if (!action) return
-        action(event)
-      })
+      keyboard.on(",", selection.comma)
+      keyboard.on(".", selection.period)
+      keyboard.on(" ", selection.space)
+      keyboard.on("ArrowLeft", selection.moveLeft)
+      keyboard.on("ArrowRight", selection.moveRight)
+      keyboard.on("Enter", () => console.log(window.focus()))
     </script>
   </body>
 </html>
