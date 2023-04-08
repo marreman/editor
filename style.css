@@ -1,0 +1,17 @@
+html {
+  font-family: system-ui, sans-serif;
+  caret-color: #2c70de;
+  font-size: 20px;
+  line-height: 1.6;
+}
+
+body {
+  max-width: 700px;
+  padding: 30px;
+  margin: 30px auto;
+}
+
+*::selection {
+  color: white;
+  background-color: #2c70de;
+}
