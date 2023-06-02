@@ -20,5 +20,9 @@ export class Program {
       const text = event.clipboardData.getData("text")
       document.body.textContent = text
     })
+
+    document.addEventListener("click", (event) => {
+      this.editor.selectClosest()
+    })
   }
 }

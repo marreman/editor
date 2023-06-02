@@ -1,8 +1,11 @@
-import { Punctuation } from "./Punctuation.mjs"
+import { Punctuation, Sentence, Word } from "./Morpheme.mjs"
 import { capitalize, decapitalize } from "./util.mjs"
 
 export class Editor {
   constructor() {
+    // this.mode = Punctuation
+    this.mode = Sentence
+    console.log(this.mode)
     this.selectNext()
   }
 
@@ -23,7 +26,9 @@ export class Editor {
   }
 
   get after() {
-    return this.node.textContent.slice(this.position)
+    return this.node.textContent.slice(
+      this.position + this.selection.toString().length
+    )
   }
 
   select(index, length) {
@@ -35,17 +40,40 @@ export class Editor {
   }
 
   selectNext() {
-    const p = Punctuation.first(this.after)
-    if (p) this.select(this.before.length + p.index, p.length)
+    const p = this.mode.first(this.after)
+    if (p)
+      this.select(
+        p.shift(this.before.length + this.selection.toString().length).index,
+        p.length
+      )
   }
 
   selectPrevious() {
-    const p = Punctuation.last(this.before)
+    const p = this.mode.last(this.before)
     if (p) this.select(p.index, p.length)
   }
 
+  selectClosest() {
+    if (this.selection.type !== "Caret") return
+
+    const closestBefore = this.mode.last(this.before)
+    const closestAfter = this.mode.first(this.after)?.shift(this.before.length)
+
+    if (!closestAfter) this.selectPrevious()
+    else if (!closestBefore) this.selectNext()
+    else if (
+      Math.abs(this.position - closestAfter.index) <
+      Math.abs(this.position - closestBefore.index)
+    ) {
+      this.selectNext()
+    } else {
+      this.selectPrevious()
+    }
+  }
+
   moveBackward() {
-    const toSwitchWith = Punctuation.last(this.before)
+    const toSwitchWith = this.mode.last(this.before)
+    if (!toSwitchWith) return
     const textToMove = this.selection.toString()
     this.selection.deleteFromDocument()
     this.insert(toSwitchWith.string)
@@ -54,7 +82,8 @@ export class Editor {
   }
 
   moveForward() {
-    const toSwitchWith = Punctuation.first(this.after)
+    const toSwitchWith = this.mode.first(this.after)
+    if (!toSwitchWith) return
     const textToMove = this.selection.toString()
     this.selection.deleteFromDocument()
     this.insert(toSwitchWith.string)

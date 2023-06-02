@@ -1,14 +1,14 @@
 html {
   font-family: system-ui, sans-serif;
   caret-color: #2c70de;
-  font-size: 20px;
+  font-size: 18px;
   line-height: 1.6;
 }
 
 body {
   max-width: 700px;
-  padding: 30px;
-  margin: 30px auto;
+  padding: 20px;
+  margin: 0 auto;
 }
 
 *::selection {
